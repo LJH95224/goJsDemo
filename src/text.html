@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>text</title>
+  <meta name="description"
+    content="Nodes consisting of two Panels, using a RoundedTopRectangle and a RoundedBottomRectangle figure." />
+  <meta charset="UTF-8">
+  <script src="../node_modules/gojs/release/go-debug.js"></script>
+  <script src="../extensions/RoundedRectangles.js"></script>
+</head>
+<script id="code">
+  
+  function init() {
+    var $ = go.GraphObject.make;
+    var NodeInfoSize = new go.Size(150, 40);
+    myDiagram =
+      $(go.Diagram, "myDiagramDiv",
+        {
+          initialContentAlignment: go.Spot.Top,
+          initialAutoScale: go.Diagram.Uniform,
+          "undoManager.isEnabled": true
+        });
+
+    // 节点的位置
+    function nodeStyle() {
+      return [
+        new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+        {
+          locationSpot: go.Spot.Center
+        }
+      ];
+    }
+    
+    // 设置端口
+    function makePort(name, align, spot, output, input) {
+      var horizontal = align.equals(go.Spot.Top) || align.equals(go.Spot.Bottom);
+      //端口基本上就是一个沿着节点一侧延伸的透明矩形，
+    //当鼠标经过它时，它会变成彩色
+      return $(go.Shape,
+        {
+          fill: "transparent",  // changed to a color in the mouseEnter event handler
+          strokeWidth: 0,  // no stroke
+          width: horizontal ? NaN : 8,  // if not stretching horizontally, just 8 wide
+          height: !horizontal ? NaN : 8,  // if not stretching vertically, just 8 tall
+          alignment: align,  // align the port on the main Shape
+          stretch: (horizontal ? go.GraphObject.Horizontal : go.GraphObject.Vertical),
+          portId: name,  // declare this object to be a "port"
+          fromSpot: spot,  // declare where links may connect at this port
+          fromLinkable: output,  // declare whether the user may draw links from here
+          toSpot: spot,  // declare where links may connect at this port
+          toLinkable: input,  // declare whether the user may draw links to here
+          cursor: "pointer",  // show a different cursor to indicate potential link point
+          mouseEnter: function (e, port) {  // the PORT argument will be this Shape
+            if (!e.diagram.isReadOnly) port.fill = "rgba(255,0,255,0.5)";
+          },
+          mouseLeave: function (e, port) {
+            port.fill = "transparent";
+          }
+        });
+    }
+    function textStyle() {
+      return {
+        font: "bold 11pt Helvetica, Arial, sans-serif",
+        stroke: "whitesmoke"
+      }
+    }
+    
+    // 部门领导
+    // 设置四个属性， topColor(顶部颜色)， LeadFirst:(顶部文字内容)， bottomColor：(底部颜色)， LeadSecond:(底部文字内容)
+    myDiagram.nodeTemplateMap.add("Leader",
+      $(go.Node, "Spot", nodeStyle(),
+        $(go.Panel, "Auto",
+          $(go.Shape, "RoundedRectangle",
+            {
+              stroke: 'transparent',
+              strokeWidth: 3,
+              spot1: go.Spot.TopLeft,
+              spot2: go.Spot.BottomRight
+            }),
+          $(go.Panel,
+            $(go.Panel, "Auto",
+              {
+                desiredSize: NodeInfoSize
+              },
+              $(go.Shape, "RoundedTopRectangle", { fill: 'white' }, new go.Binding("fill", "topColor")),
+              $(go.TextBlock, new go.Binding("text", "LeadFirst"))
+            ),
+            $(go.Panel, "Auto",
+              { desiredSize: NodeInfoSize },
+              { position: new go.Point(0, NodeInfoSize.height - 1) },
+              $(go.Shape, "RoundedBottomRectangle", { fill: "white" }, new go.Binding("fill", "bottomColor")),
+              $(go.TextBlock, {
+                margin: 8,
+                // maxSize: new go.Size(160, NaN),
+              }, new go.Binding("text", "LeadSecond"))
+            ))
+        ),
+        makePort("T", go.Spot.Top, go.Spot.Top, true, true),
+        makePort("L", go.Spot.Left, go.Spot.Left, true, true),
+        makePort("R", go.Spot.Right, go.Spot.Right, true, true),
+        makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, true)
+      )
+    )
+    
+    // 线的编辑
+    myDiagram.linkTemplate =
+      $(go.Link,  // the whole link panel
+        {
+          routing: go.Link.AvoidsNodes,
+          curve: go.Link.JumpOver,
+          corner: 5, toShortLength: 4,
+          relinkableFrom: true,
+          relinkableTo: true,
+          reshapable: true,
+          resegmentable: true,
+          // mouse-overs subtly highlight links:
+          mouseEnter: function (e, link) { link.findObject("HIGHLIGHT").stroke = "rgba(30,144,255,0.2)"; },
+          mouseLeave: function (e, link) { link.findObject("HIGHLIGHT").stroke = "transparent"; },
+          selectionAdorned: false
+        },
+        new go.Binding("points").makeTwoWay(),
+        $(go.Shape,  // the highlight shape, normally transparent
+          { isPanelMain: true, strokeWidth: 8, stroke: "transparent", name: "HIGHLIGHT" }),
+        $(go.Shape,  // the link path shape
+          { isPanelMain: true, stroke: "gray", strokeWidth: 2 },
+          new go.Binding("stroke", "isSelected", function (sel) { return sel ? "dodgerblue" : "gray"; }).ofObject()),
+      );
+      
+    myDiagram.toolManager.linkingTool.temporaryLink.routing = go.Link.Orthogonal;
+    myDiagram.toolManager.relinkingTool.temporaryLink.routing = go.Link.Orthogonal;
+    load();
+  }
+  function load() {
+    // myDiagram.model = go.Model.fromJson(document.getElementById("mySavedModel").value);
+    let data = {
+      "class": "go.GraphLinksModel",
+      "linkFromPortIdProperty": "fromPort",
+      "linkToPortIdProperty": "toPort",
+      "nodeDataArray": [
+        { "category": "Leader", "loc": "560 -10", "LeadFirst": "空军部部长", "key": 1, "LeadSecond": "空军部副部长", "topColor": "red", "bottomColor": "yellow" },
+        { "category": "Department", "loc": "160 200", "title": "空军行政参谋部20", "key": 20, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办" },
+        { "category": "Person", "loc": "0 100", "PersonName": "空军部文职30", "key": 30 },
+      ],
+      "linkDataArray": [
+      ]
+    }
+
+    myDiagram.model = go.Model.fromJson(data)
+  }
+</script>
+<body onload="init()">
+  <div id="sample">
+    <div id="myDiagramDiv" style="border: solid 1px black; width:100%; height:600px; background-color: #cccccc"></div>
+  <textarea id="mySavedModel" style="width:100%;height:300px">
+  { "class": "go.GraphLinksModel",
+    "linkFromPortIdProperty": "fromPort",
+    "linkToPortIdProperty": "toPort",
+    "nodeDataArray": [
+    {"category":"Leader", "loc":"560 -10", "LeadFirst":"空军部部长", "key":1, "LeadSecond": "空军部副部长", "topColor": "red", "bottomColor":"yellow"},
+    {"category":"Department", "loc":"160 200", "title":"空军行政参谋部20", "key":20, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办"},
+    {"category":"Department", "loc":"260 200", "title":"空军行政参谋部21", "key":21, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办"},
+    {"category":"Department", "loc":"560 200", "title":"空军行政参谋部22", "key":22, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办"},
+    {"category":"Department", "loc":"560 200", "title":"空军行政参谋部23", "key":23, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办"},
+    {"category":"Department", "loc":"560 200", "title":"空军行政参谋部24", "key":24, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办"},
+    {"category":"Department", "loc":"560 200", "title":"空军行政参谋部25", "key":25, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办"},
+    {"category":"Department", "loc":"560 200", "title":"空军行政参谋部26", "key":26, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办"},
+    {"category":"Department", "loc":"560 200", "title":"空军行政参谋部27", "key":27, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办"},
+    {"category":"Department", "loc":"560 200", "title":"空军行政参谋部28", "key":28, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办"},
+    {"category":"Person", "loc":"0 100", "PersonName":"空军部文职30", "key":30},
+    {"category":"Person", "loc":"180 100", "PersonName":"空军部文职31", "key":31},
+    {"category":"Person", "loc":"360 100", "PersonName":"空军部文职32", "key":32},
+    {"category":"Person", "loc":"520 100", "PersonName":"空军部文职33", "key":33},
+    {"category":"Person", "loc":"-180 100", "PersonName":"空军部文职34", "key":34},
+    {"category":"Person", "loc":"-360 100", "PersonName":"空军部文职35", "key":35},
+    {"category":"Person", "loc":"560 100", "PersonName":"空军部文职36", "key":36},
+    {"category":"Person", "loc":"560 100", "PersonName":"空军部文职37", "key":37}
+   ],
+    "linkDataArray": [
+   ]}
+    </textarea>
+  </div>
+</body>
+
+</html>
