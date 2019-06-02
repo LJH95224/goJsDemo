@@ -11,7 +11,7 @@
   <script src="../extensions/RoundedRectangles.js"></script>
   <script id="code">
     function init() {
-      var NodeInfoSize = new go.Size(150, 40); 
+      var NodeInfoSize = new go.Size(150, 40);
       if (window.goSamples) goSamples();  // init for these samples -- you don't need to call this
       var $ = go.GraphObject.make;  // for conciseness in defining templates
       myDiagram =
@@ -21,24 +21,10 @@
             "LinkRelinked": showLinkLabel,
             "undoManager.isEnabled": true  // enable undo & redo
           });
-      // when the document is modified, add a "*" to the title and enable the "Save" button
-      myDiagram.addDiagramListener("Modified", function (e) {
-        var button = document.getElementById("SaveButton");
-        if (button) button.disabled = !myDiagram.isModified;
-        var idx = document.title.indexOf("*");
-        if (myDiagram.isModified) {
-          if (idx < 0) document.title += "*";
-        } else {
-          if (idx >= 0) document.title = document.title.substr(0, idx);
-        }
-      });
+
       // helper definitions for node templates
       function nodeStyle() {
         return [
-          // The Node.location comes from the "loc" property of the node data,
-          // converted by the Point.parse static method.
-          // If the Node.location is changed, it updates the "loc" property of the node data,
-          // converting back using the Point.stringify static method.
           new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
           {
             // the Node.location is at the center of each node
@@ -46,16 +32,8 @@
           }
         ];
       }
-      // Define a function for creating a "port" that is normally transparent.定义用于创建通常透明的“端口”的函数
-      // The "name" is used as the GraphObject.portId,这个“名字”是用来做GraphObject的id。
-      // the "align" is used to determine where to position the port relative to the body of the node,
-      // the "spot" is used to control how links connect with the port and whether the port
-      // stretches along the side of the node,
-      // and the boolean "output" and "input" arguments control whether the user can draw links from or to the port.
       function makePort(name, align, spot, output, input) {
         var horizontal = align.equals(go.Spot.Top) || align.equals(go.Spot.Bottom);
-        // the port is basically just a transparent rectangle that stretches along the side of the node,
-        // and becomes colored when the mouse passes over it
         return $(go.Shape,
           {
             fill: "transparent",  // changed to a color in the mouseEnter event handler
@@ -84,153 +62,6 @@
           stroke: "whitesmoke"
         }
       }
-      // define the Node templates for regular nodes
-      myDiagram.nodeTemplateMap.add("",  // the default category
-        $(go.Node, "Table", nodeStyle(),
-          // the main object is a Panel that surrounds a TextBlock with a rectangular Shape
-          $(go.Panel, "Auto",
-            $(go.Shape, "Rectangle",
-              { fill: "#cccccc", strokeWidth: 1, stroke: 'yellow' },
-              new go.Binding("figure", "figure")),
-            $(go.TextBlock, textStyle(),
-              {
-                margin: 8,
-                maxSize: new go.Size(160, NaN),
-                wrap: go.TextBlock.WrapFit,
-                editable: true
-              },
-              new go.Binding("text").makeTwoWay())
-          ),
-          // four named ports, one on each side:
-          makePort("T", go.Spot.Top, go.Spot.TopSide, false, true),
-          makePort("L", go.Spot.Left, go.Spot.LeftSide, true, true),
-          makePort("R", go.Spot.Right, go.Spot.RightSide, true, true),
-          makePort("B", go.Spot.Bottom, go.Spot.BottomSide, true, false)
-        ));
-      myDiagram.nodeTemplateMap.add("Conditional",
-        $(go.Node, "Table", nodeStyle(),
-          // the main object is a Panel that surrounds a TextBlock with a rectangular Shape
-          $(go.Panel, "Auto",
-            $(go.Shape, "Diamond",
-              { fill: "#00A9C9", strokeWidth: 0 },
-              new go.Binding("figure", "figure")),
-            $(go.TextBlock, textStyle(),
-              {
-                margin: 8,
-                maxSize: new go.Size(160, NaN),
-                wrap: go.TextBlock.WrapFit,
-                editable: true
-              },
-              new go.Binding("text").makeTwoWay())
-          ),
-          // four named ports, one on each side:
-          makePort("T", go.Spot.Top, go.Spot.Top, false, true),
-          makePort("L", go.Spot.Left, go.Spot.Left, true, true),
-          makePort("R", go.Spot.Right, go.Spot.Right, true, true),
-          makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false)
-        ));
-      myDiagram.nodeTemplateMap.add("Start",
-        $(go.Node, "Table", nodeStyle(),
-          $(go.Panel, "Auto",
-            $(go.Shape, "Circle",
-              { minSize: new go.Size(40, 40), fill: "#79C900", strokeWidth: 0 }),
-            $(go.TextBlock, "Start", textStyle(),
-              new go.Binding("text"))
-          ),
-          // three named ports, one on each side except the top, all output only:
-          makePort("L", go.Spot.Left, go.Spot.Left, true, false),
-          makePort("R", go.Spot.Right, go.Spot.Right, true, false),
-          makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false)
-        ));
-      myDiagram.nodeTemplateMap.add("End",
-        $(go.Node, "Table", nodeStyle(),
-          $(go.Panel, "Auto",
-            $(go.Shape, "Circle",
-              { minSize: new go.Size(40, 40), fill: "#DC3C00", strokeWidth: 0 }),
-            $(go.TextBlock, "End", textStyle(),
-              new go.Binding("text"))
-          ),
-          // three named ports, one on each side except the bottom, all input only:
-          makePort("T", go.Spot.Top, go.Spot.Top, false, true),
-          makePort("L", go.Spot.Left, go.Spot.Left, false, true),
-          makePort("R", go.Spot.Right, go.Spot.Right, false, true)
-        ));
-      // taken from ../extensions/Figures.js:
-      go.Shape.defineFigureGenerator("File", function (shape, w, h) {
-        var geo = new go.Geometry();
-        var fig = new go.PathFigure(0, 0, true); // starting point
-        geo.add(fig);
-        fig.add(new go.PathSegment(go.PathSegment.Line, .75 * w, 0));
-        fig.add(new go.PathSegment(go.PathSegment.Line, w, .25 * h));
-        fig.add(new go.PathSegment(go.PathSegment.Line, w, h));
-        fig.add(new go.PathSegment(go.PathSegment.Line, 0, h).close());
-        var fig2 = new go.PathFigure(.75 * w, 0, false);
-        geo.add(fig2);
-        // The Fold
-        fig2.add(new go.PathSegment(go.PathSegment.Line, .75 * w, .25 * h));
-        fig2.add(new go.PathSegment(go.PathSegment.Line, w, .25 * h));
-        geo.spot1 = new go.Spot(0, .25);
-        geo.spot2 = go.Spot.BottomRight;
-        return geo;
-      });
-      myDiagram.nodeTemplateMap.add("Comment",  
-        $(go.Node, "Spot", nodeStyle(),
-          //  { selectionAdorned: false, locationSpot: go.Spot.Center },
-           $(go.Panel, "Auto",
-            $(go.Shape, "RoundedRectangle",  // shown when selected
-              { stroke: "transparent", strokeWidth: 3, spot1: go.Spot.TopLeft, spot2: go.Spot.BottomRight },
-              new go.Binding("stroke", "isSelected", function (s) { return s ? "dodgerblue" : "transparent"; }).ofObject()),
-            $(go.Panel,
-              $(go.Panel, "Auto",
-                { desiredSize: NodeInfoSize },
-                $(go.Shape, "RoundedTopRectangle", { fill: "white" }, new go.Binding("fill", "topColor")),
-                $(go.TextBlock, new go.Binding("text", "text"))
-              ),
-              $(go.Panel, "Auto",
-                { desiredSize: NodeInfoSize },
-                { position: new go.Point(0, NodeInfoSize.height - 1) },  // overlap the top side of this shape with the bottom side of the top shape
-                $(go.Shape, "RoundedBottomRectangle", { fill: "white" }, new go.Binding("fill", "bottomColor")),
-                $(go.TextBlock, new go.Binding("text", "text2"))
-              )
-            )
-          )
-        )
-      )
-
-      myDiagram.nodeTemplateMap.add("Leader",
-        $(go.Node, "Spot", nodeStyle(),
-          $(go.Panel, "Auto",
-            $(go.Shape, "RoundedRectangle",
-              {
-                stroke: 'transparent',
-                strokeWidth: 3,
-                spot1: go.Spot.TopLeft,
-                spot2: go.Spot.BottomRight
-              }),
-              $(go.Panel,
-                $(go.Panel, "Auto",
-                  {
-                    desiredSize: NodeInfoSize
-                  },
-                  $(go.Shape, "RoundedTopRectangle", { fill: 'white' }, new go.Binding("fill", "topColor")),
-                  $(go.TextBlock, new go.Binding("text", "LeadFirst"))
-                ),
-                $(go.Panel, "Auto",
-                  { desiredSize: NodeInfoSize },
-                  { position: new go.Point(0, NodeInfoSize.height - 1) },
-                  $(go.Shape, "RoundedBottomRectangle", { fill: "white" }, new go.Binding("fill", "bottomColor")),
-                  $(go.TextBlock, {
-                    margin: 8,
-                    // maxSize: new go.Size(160, NaN),
-                  },new go.Binding("text", "LeadSecond"))
-                ))
-            ),
-          makePort("T", go.Spot.Top, go.Spot.Top, false, true),
-          makePort("L", go.Spot.Left, go.Spot.Left, true, true),
-          makePort("R", go.Spot.Right, go.Spot.Right, true, true),
-          makePort("B", go.Spot.Bottom, go.Spot.Bottom, true, false)
-        )
-      )
 
       myDiagram.nodeTemplateMap.add("Person",
         $(go.Node, "Spot", nodeStyle(),
@@ -247,7 +78,7 @@
         )
       )
 
-          // 单位部门机构
+      // 单位部门机构
       myDiagram.nodeTemplateMap.add("Department",
         $(go.Node, "Auto", nodeStyle(),
           $(go.Shape, "RoundedBottomRectangle", {
@@ -291,77 +122,7 @@
         )
       )
 
-      // myDiagram.nodeTemplateMap.add("Comment",
-      //   $(go.Node, "Auto", nodeStyle(),
-      //     $(go.Panel, "Table",
-      //       {
-      //         maxSize: new go.Size(100, 60),
-      //         margin: new go.Margin(6, 10, 0, 3),
-      //         defaultAlignment: go.Spot.Left
-      //       },
-      //       $(go.RowColumnDefinition, { column: 2, width: 4 }),
 
-      //       $(go.TextBlock, textStyle(),
-      //         { row: 1, column: 0 }),
-      //       $(go.TextBlock, textStyle(),
-      //         {
-      //           row: 1, column: 1, columnSpan: 4,
-      //           editable: true, isMultiline: false,
-      //           minSize: new go.Size(10, 14),
-      //           textAlign: "center",
-      //           stroke: "black",
-      //           margin: new go.Margin(0, 0, 0, 3)
-      //         },
-      //         new go.Binding("text").makeTwoWay()),
-      //       $(go.TextBlock, textStyle(),
-      //         { row: 2, column: 0 }),  
-      //       $(go.TextBlock, textStyle(),
-      //         {
-      //           row: 2, column: 1, columnSpan: 4,
-      //           editable: true, isMultiline: false,
-      //           minSize: new go.Size(10, 14),
-      //           textAlign: "center",
-      //           stroke: "black",
-      //           margin: new go.Margin(0, 0, 0, 3),
-                
-      //         },
-      //         new go.Binding("text", "text2").makeTwoWay())
-      //     )
-      //     // no ports, because no links are allowed to connect with a comment
-      //   ));
-
-
-      // myDiagram.nodeTemplateMap.add("Comment",
-      //   $(go.Node, "Auto", nodeStyle(),
-      //     $(go.Shape, "Rectangle",
-      //       { fill: "red", strokeWidth: 1, stroke: 'yellow' }),
-      //     $(go.TextBlock, textStyle(),
-      //       {
-      //         margin: 5,
-      //         maxSize: new go.Size(200, NaN),
-      //         wrap: go.TextBlock.WrapFit,
-      //         textAlign: "center",
-      //         editable: true,
-      //         font: "bold 12pt Helvetica, Arial, sans-serif",
-      //         stroke: '#454545'
-      //       },
-      //       new go.Binding("text").makeTwoWay()),
-      //     $(go.Shape, "Rectangle",
-      //       { fill: "yellow", strokeWidth: 1, stroke: 'green' }),
-      //     $(go.TextBlock, textStyle(),
-      //       {
-      //         margin: 5,
-      //         maxSize: new go.Size(200, NaN),
-      //         wrap: go.TextBlock.WrapFit,
-      //         textAlign: "center",
-      //         editable: true,
-      //         font: "bold 12pt Helvetica, Arial, sans-serif",
-      //         stroke: '#454545'
-      //       },
-      //       new go.Binding("text", "text2").makeTwoWay())
-      //     // no ports, because no links are allowed to connect with a comment
-      //   ));
-      // replace the default Link template in the linkTemplateMap
       myDiagram.linkTemplate =
         $(go.Link,  // the whole link panel
           {
@@ -383,22 +144,6 @@
           $(go.Shape,  // the link path shape
             { isPanelMain: true, stroke: "gray", strokeWidth: 2 },
             new go.Binding("stroke", "isSelected", function (sel) { return sel ? "dodgerblue" : "gray"; }).ofObject()),
-          $(go.Shape,  // the arrowhead
-            { toArrow: "standard", strokeWidth: 0, fill: "gray" }),
-          $(go.Panel, "Auto",  // the link label, normally not visible
-            { visible: false, name: "LABEL", segmentIndex: 2, segmentFraction: 0.5 },
-            new go.Binding("visible", "visible").makeTwoWay(),
-            $(go.Shape, "RoundedRectangle",  // the label shape
-              { fill: "#F8F8F8", strokeWidth: 0 }),
-            $(go.TextBlock, "Yes",  // the label
-              {
-                textAlign: "center",
-                font: "10pt helvetica, arial, sans-serif",
-                stroke: "#333333",
-                editable: true
-              },
-              new go.Binding("text").makeTwoWay())
-          )
         );
       // Make link labels visible if coming out of a "conditional" node.
       // This listener is called by the "LinkDrawn" and "LinkRelinked" DiagramEvents.
@@ -410,19 +155,8 @@
       myDiagram.toolManager.linkingTool.temporaryLink.routing = go.Link.Orthogonal;
       myDiagram.toolManager.relinkingTool.temporaryLink.routing = go.Link.Orthogonal;
       load();  // load an initial diagram from some JSON text
-      // initialize the Palette that is on the left side of the page
-      myPalette =
-        $(go.Palette, "myPaletteDiv",  // must name or refer to the DIV HTML element
-          {
-            nodeTemplateMap: myDiagram.nodeTemplateMap,  // share the templates used by myDiagram
-            model: new go.GraphLinksModel([  // specify the contents of the Palette
-              { category: "Start", text: "Start" },
-              { text: "Step" },
-              { category: "Conditional", text: "???" },
-              { category: "End", text: "End" },
-              { category: "Comment", text: "Comment" }
-            ])
-          });
+      
+      
     } // end init
     // Show the diagram's model in JSON format that the user may edit
     function save() {
@@ -431,25 +165,6 @@
     }
     function load() {
       myDiagram.model = go.Model.fromJson(document.getElementById("mySavedModel").value);
-    }
-    // print the diagram by opening a new window holding SVG images of the diagram contents for each page
-    function printDiagram() {
-      var svgWindow = window.open();
-      if (!svgWindow) return;  // failure to open a new Window
-      var printSize = new go.Size(700, 960);
-      var bnds = myDiagram.documentBounds;
-      var x = bnds.x;
-      var y = bnds.y;
-      while (y < bnds.bottom) {
-        while (x < bnds.right) {
-          var svg = myDiagram.makeSVG({ scale: 1.0, position: new go.Point(x, y), size: printSize });
-          svgWindow.document.body.appendChild(svg);
-          x += printSize.width;
-        }
-        x = bnds.x;
-        y += printSize.height;
-      }
-      setTimeout(function () { svgWindow.print(); }, 1);
     }
   </script>
 </head>
@@ -461,20 +176,6 @@
         style="width: 200px; margin-right: 2px; background-color: whitesmoke; border: solid 1px black"></div>
       <div id="myDiagramDiv" style="flex-grow: 1; height: 750px; border: solid 1px black"></div>
     </div>
-    <p>
-      The FlowChart sample demonstrates several key features of GoJS,
-      namely <a href="../intro/palette.html">Palette</a>s,
-      <a href="../intro/links.html">Linkable nodes</a>, Drag/Drop behavior,
-      <a href="../intro/textBlocks.html">Text Editing</a>, and the use of
-      <a href="../intro/templateMaps.html">Node Template Maps</a> in Diagrams.
-    </p>
-    <p>
-      Mouse-over a Node to view its ports.
-      Drag from these ports to create new Links.
-      Selecting Links allows you to re-shape and re-link them.
-      Selecting a Node and then clicking its TextBlock will allow
-      you to edit text (except on the Start and End Nodes).
-    </p>
     <button id="SaveButton" onclick="save()">Save</button>
     <button onclick="load()">Load</button>
     Diagram Model saved in JSON format:
@@ -483,38 +184,12 @@
   "linkFromPortIdProperty": "fromPort",
   "linkToPortIdProperty": "toPort",
   "nodeDataArray": [
-  {"category":"Leader", "loc":"560 -10", "LeadFirst":"空军部部长", "key":-113, "LeadSecond": "空军部副部长", "topColor": "red", "bottomColor":"yellow"},
   {"category":"Department", "loc":"560 200", "title":"空军行政参谋部", "key":-113, "detail": "主任，副主任，人资资源与人力办,主任，副主任，人资资源与人力办"},
-  {"category":"Person", "loc":"560 100", "PersonName":"空军部文职", "key":-123},
-{"category":"Comment", "loc":"360 -10", "text":"Kookie Brittle", "key":-13, "text2": "ceshi"},
-{"key":-1, "category":"Start", "loc":"175 0", "text":"Start"},
-{"key":0, "loc":"-5 75", "text":"Preheat oven to 375 F"},
-{"key":1, "loc":"175 100", "text":"In a bowl, blend: 1 cup margarine, 1.5 teaspoon vanilla, 1 teaspoon salt"},
-{"key":2, "loc":"175 200", "text":"Gradually beat in 1 cup sugar and 2 cups sifted flour"},
-{"key":3, "loc":"175 290", "text":"Mix in 6 oz (1 cup) Nestle's Semi-Sweet Chocolate Morsels"},
-{"key":4, "loc":"175 380", "text":"Press evenly into ungreased 15x10x1 pan"},
-{"key":5, "loc":"355 85", "text":"Finely chop 1/2 cup of your choice of nuts"},
-{"key":6, "loc":"175 450", "text":"Sprinkle nuts on top"},
-{"key":7, "loc":"175 515", "text":"Bake for 25 minutes and let cool"},
-{"key":8, "loc":"175 585", "text":"Cut into rectangular grid"},
-{"key":-2, "category":"End", "loc":"175 660", "text":"Enjoy!"}
+  {"category":"Person", "loc":"560 100", "PersonName":"空军部文职", "key":-123}
  ],
   "linkDataArray": [
-{"from":1, "to":2, "fromPort":"B", "toPort":"T"},
-{"from":2, "to":3, "fromPort":"B", "toPort":"T"},
-{"from":3, "to":4, "fromPort":"B", "toPort":"T"},
-{"from":4, "to":6, "fromPort":"B", "toPort":"T"},
-{"from":6, "to":7, "fromPort":"B", "toPort":"T"},
-{"from":7, "to":8, "fromPort":"B", "toPort":"T"},
-{"from":8, "to":-2, "fromPort":"B", "toPort":"T"},
-{"from":-1, "to":0, "fromPort":"B", "toPort":"T"},
-{"from":-1, "to":1, "fromPort":"B", "toPort":"T"},
-{"from":-1, "to":5, "fromPort":"B", "toPort":"T"},
-{"from":5, "to":4, "fromPort":"B", "toPort":"T"},
-{"from":0, "to":4, "fromPort":"B", "toPort":"T"}
  ]}
   </textarea>
-    <button onclick="printDiagram()">Print Diagram Using SVG</button>
   </div>
 </body>
 
